@@ -16,7 +16,7 @@ describe('actor routes', () => {
   });
 
   let actor;
-
+  
   beforeEach(async() => {
     actor = await Actor.create({
       name: 'Actor Name',
