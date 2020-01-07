@@ -54,4 +54,24 @@ describe('reviewers routes', () => {
         });
       });
   });
+  it('updates a reviewer', () => {
+    return request(app)
+      .patch(`/api/v1/reviewers/${reviewer.id}`)
+      .send({ company: 'New Company' })
+      .then(res => {
+        expect(res.body.company).toEqual('New Company');
+      });
+  });
+  it('deletes a reviewer with no reviews', () => {
+    return request(app)
+      .delete(`/api/v1/reviewers/${reviewer.id}`)
+      .then(res => {
+        expect(res.body).toEqual({
+          _id: reviewer.id,
+          name: 'Reviewer Name',
+          company: 'Company Name',
+          __v: 0
+        });
+      });
+  });
 });
