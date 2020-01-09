@@ -1,97 +1,52 @@
-require('dotenv').config();
+const { getFilm, getFilms, getStudio, getActor } = require('../lib/helpers/data-helpers');
 
 const request = require('supertest');
 const app = require('../lib/app');
-const connect = require('../lib/utils/connect');
-const mongoose = require('mongoose');
-const Film = require('../lib/models/Film');
-const Studio = require('../lib/models/Studio');
-const Actor = require('../lib/models/Actor');
+
 
 describe('film routes', () => {
-  beforeAll(() => {
-    connect();
-  });
-
-  beforeEach(() => {
-    return mongoose.connection.dropDatabase();
-  });
-
-  let film;
-  let studio;
-  let actor;
-
-  beforeEach(async() => {
-    studio = await Studio.create({
-      name: 'Studio Name'
-    });
-
-    actor = await Actor.create({
-      name: 'Actor Name'
-    });
-
-    film = await Film.create({
-      title: 'Film Title',
-      studio: studio.id,
-      released: 2015,
-      cast: [{
-        role: 'Star',
-        actor: actor.id
-      }]
-    });
-  });
-
-  afterAll(() => {
-    return mongoose.connection.close();
-  });
-
-  it('gets all films', () => {
+  it('creates a film', async() => {
+    const myActor = await getActor();
+    const myStudio = await getStudio();
     return request(app)
-      .get('/api/v1/films')
-      .then(films => {
-        expect(films.body).toEqual([{
-          _id: film.id,
+      .post('/api/v1/films')
+      .send({
+        title: 'Film Title',
+        studio: myStudio._id,
+        released: 2020,
+        cast: [{ role: 'Star', actor: myActor._id }]
+      })
+      .then(res => {
+        expect(res.body).toEqual({
+          _id: expect.any(String),
+          id: expect.any(String),
+          __v: 0,
+          cast: [{ _id: expect.any(String), actor: myActor._id.toString(), role: 'Star' }],
+          released: 2020,
           title: 'Film Title',
-          studio: {
-            _id: studio.id,
-            name: 'Studio Name'
-          },
-          released: 2015,
-          cast: [{
-            _id: expect.any(String),
-            role: 'Star',
-            actor: {
-              _id: actor.id,
-              name: 'Actor Name'
-            }
-          }],
-          __v: 0
-        }]);
+          studio: myStudio._id.toString()
+        });
       });
   });
 
-  it('gets a film by id', () => {
+  it('gets all films', async() => {
+    const films = await getFilms();
     return request(app)
-      .get(`/api/v1/films/${film.id}`)
+      .get('/api/v1/films')
       .then(res => {
-        expect(res.body).toEqual({
-          _id: film.id,
-          title: 'Film Title',
-          studio: {
-            _id: studio.id,
-            name: 'Studio Name'
-          },
-          released: 2015,
-          cast: [{
-            _id: expect.any(String),
-            role: 'Star',
-            actor: {
-              _id: actor.id,
-              name: 'Actor Name'
-            }
-          }],
-          __v: 0
+        films.forEach(film => {
+          delete film.cast;
+          expect(res.body).toContainEqual({ ...film, studio: expect.any(Object) });
         });
+      });
+  });
+
+  it('gets a film by id', async() => {
+    const film = await getFilm();
+    return request(app)
+      .get(`/api/v1/films/${film._id}`)
+      .then(res => {
+        expect(res.body).toEqual({ ...film, reviews: expect.any(Object), studio: expect.any(Object) });
       });
   });
 });

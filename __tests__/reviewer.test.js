@@ -29,6 +29,16 @@ describe('reviewers routes', () => {
     return mongoose.connection.close();
   });
 
+
+  it('creates a reviewer', () => {
+    return request(app)
+      .post('/api/v1/studios')
+      .send({
+        name: 'Reviewer Name',
+        company: 'Company Name'
+      });
+  });
+
   it('gets all reviewers', () => {
     return request(app)
       .get('/api/v1/reviewers')

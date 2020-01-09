@@ -103,4 +103,20 @@ describe('Review routes', () => {
         });
       });
   });
+  it('limits to 100 reviews', () => {
+    const reviewArray = new Array(110).fill({
+      rating: 5,
+      reviewer: reviewer.id,
+      review: 'good',
+      film: film.id
+    });
+
+    Review.create(reviewArray);
+
+    return request(app)
+      .get('/api/v1/reviews')
+      .then(reviews => {
+        expect(reviews.body).toHaveLength(100);
+      });
+  });
 });
