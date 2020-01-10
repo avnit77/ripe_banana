@@ -18,7 +18,7 @@ describe('actor routes', () => {
           _id: expect.any(String),
           __v: 0,
           name: 'Actor Name',
-          // id: expect.any(String)
+          id: expect.any(String)
         });
       });
   });
@@ -44,7 +44,7 @@ describe('actor routes', () => {
           _id: actor._id.toString(),
           name: actor.name,
           id: expect.any(String),
-          films: [],
+          films: expect.any(Array),
           __v: 0
         });
       });

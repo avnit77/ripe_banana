@@ -1,86 +1,75 @@
-require('dotenv').config();
+
+const { getReviewer, getReviewers } = require('../lib/helpers/data-helpers');
 
 const request = require('supertest');
 const app = require('../lib/app');
-const connect = require('../lib/utils/connect');
-const mongoose = require('mongoose');
-const Reviewer = require('../lib/models/Reviewer');
+const Review = require('../lib/models/Review');
 
-describe('reviewers routes', () => {
-  beforeAll(() => {
-    connect();
-  });
-
-  beforeEach(() => {
-    return mongoose.connection.dropDatabase();
-  });
-
-
-  let reviewer;
-
-  beforeEach(async() => {
-    reviewer = await Reviewer.create({
-      name: 'Reviewer Name',
-      company: 'Company Name'
-    });
-  });
-
-  afterAll(() => {
-    return mongoose.connection.close();
-  });
-
-
-  it('creates a reviewer', () => {
+describe('reviewer routes', () => {
+  it('creates a reviewer', async() => {
     return request(app)
-      .post('/api/v1/studios')
+      .post('/api/v1/reviewers')
       .send({
-        name: 'Reviewer Name',
-        company: 'Company Name'
-      });
-  });
-
-  it('gets all reviewers', () => {
-    return request(app)
-      .get('/api/v1/reviewers')
-      .then(reviewers => {
-        expect(reviewers.body).toEqual([{
-          _id: reviewer.id,
-          name: 'Reviewer Name',
-          company: 'Company Name',
-          __v: 0
-        }]);
-      });
-  });
-
-  it('gets a reviewer by id', () => {
-    return request(app)
-      .get(`/api/v1/reviewers/${reviewer.id}`)
+        name: 'Reviewer Name', company: 'Company'
+      })
       .then(res => {
         expect(res.body).toEqual({
-          _id: reviewer.id,
+          _id: expect.any(String),
+          id: expect.any(String),
+          __v: 0,
           name: 'Reviewer Name',
-          company: 'Company Name',
-          __v: 0
+          company: 'Company'
         });
       });
   });
-  it('updates a reviewer', () => {
+
+  it('gets all reviewers', async() => {
+    const reviewers = await getReviewers();
     return request(app)
-      .patch(`/api/v1/reviewers/${reviewer.id}`)
-      .send({ company: 'New Company' })
+      .get('/api/v1/reviewers')
       .then(res => {
-        expect(res.body.company).toEqual('New Company');
+        reviewers.forEach(reviewer => {
+          expect(res.body).toContainEqual(reviewer);
+        });
       });
   });
-  it('deletes a reviewer with no reviews', () => {
+
+  it('gets a reviewer by id', async() => {
+    const reviewer = await getReviewer();
     return request(app)
-      .delete(`/api/v1/reviewers/${reviewer.id}`)
+      .get(`/api/v1/reviewers/${reviewer._id}`)
+      .then(res => {
+        expect(res.body).toEqual({ ...reviewer });
+      });
+  });
+
+  it('updates a reviewer by id', async() => {
+    const reviewer = await getReviewer();
+    return request(app)
+      .patch(`/api/v1/reviewers/${reviewer._id}`)
+      .send({ name: 'New Reviewer' })
       .then(res => {
         expect(res.body).toEqual({
-          _id: reviewer.id,
-          name: 'Reviewer Name',
-          company: 'Company Name',
-          __v: 0
+          _id: expect.any(String),
+          id: expect.any(String),
+          __v: 0,
+          name: 'New Reviewer',
+          company: reviewer.company
+        });
+      });
+  });
+  it('deletes a reviewer by id when the reviewer has no reviews', async() => {
+    const reviewer = await getReviewer();
+    await Review.deleteMany({ reviewer: reviewer._id });
+    return request(app)
+      .delete(`/api/v1/reviewers/${reviewer._id}`)
+      .then(res => {
+        expect(res.body).toEqual({
+          _id: expect.any(String),
+          id: expect.any(String),
+          __v: 0,
+          name: reviewer.name,
+          company: reviewer.company
         });
       });
   });

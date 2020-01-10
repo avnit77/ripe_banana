@@ -1,122 +1,57 @@
-require('dotenv').config();
+
+const { getReview, getFilm, getReviewer } = require('../lib/helpers/data-helpers');
 
 const request = require('supertest');
 const app = require('../lib/app');
-const connect = require('../lib/utils/connect');
-const mongoose = require('mongoose');
+const chance = require('chance').Chance();
 const Review = require('../lib/models/Review');
-const Film = require('../lib/models/Film');
-const Studio = require('../lib/models/Studio');
-const Reviewer = require('../lib/models/Reviewer');
 
-describe('Review routes', () => {
-  beforeAll(() => {
-    connect();
-  });
-
-  beforeEach(() => {
-    return mongoose.connection.dropDatabase();
-  });
-
-  let review;
-  let film;
-  let studio;
-  let reviewer;
-
-  beforeEach(async() => {
-    studio = await Studio.create({
-      name: 'Studio Name'
-    });
-
-    reviewer = await Reviewer.create({
-      name: 'Reviewer Name',
-      company: 'Company Name'
-    });
-
-    film = await Film.create({
-      title: 'Film Title',
-      studio: studio.id,
-      released: 2015,
-    });
-
-    review = await Review.create({
-      rating: 5,
-      reviewer: reviewer.id,
-      review: 'good',
-      film: {
-        _id: film.id,
-        title: 'Film Title'
-      }
-    });
-  });
-
-  afterAll(() => {
-    return mongoose.connection.close();
-  });
-
-  it('gets all reviews', () => {
+describe('review routes', () => {
+  it('creates a review', async() => {
+    const reviewer = await getReviewer();
+    const film = await getFilm();
     return request(app)
-      .get('/api/v1/reviews')
-      .then(reviews => {
-        expect(reviews.body).toEqual([{
-          _id: review.id,
-          rating: 5,
-          reviewer: reviewer.id,
-          review: 'good',
-          film: {
-            _id: film.id,
-            title: 'Film Title'
-          },
-          __v: 0
-        }]);
-      });
-  });
-
-  it('gets a review by id', () => {
-    return request(app)
-      .get(`/api/v1/reviews/${review.id}`)
+      .post('/api/v1/reviews')
+      .send({
+        rating: 5,
+        reviewer: reviewer._id,
+        review: 'good',
+        film: film._id
+      })
       .then(res => {
         expect(res.body).toEqual({
-          _id: review.id,
+          _id: expect.any(String),
+          __v: 0,
           rating: 5,
-          reviewer: reviewer.id,
+          reviewer: reviewer._id.toString(),
           review: 'good',
-          film: {
-            _id: film.id,
-            title: 'Film Title'
-          },
-          __v: 0
+          film: film._id.toString()
         });
       });
   });
-  it('deletes a review', () => {
+
+  it('deletes a review', async() => {
+    const review = await getReview();
     return request(app)
-      .delete(`/api/v1/reviews/${review.id}`)
+      .delete(`/api/v1/reviews/${review._id}`)
       .then(res => {
-        expect(res.body).toEqual({
-          _id: review.id,
-          rating: 5,
-          reviewer: reviewer.id,
-          review: 'good',
-          film: film.id,
-          __v: 0
-        });
+        expect(res.body).toEqual(review);
       });
   });
-  it('limits to 100 reviews', () => {
-    const reviewArray = new Array(110).fill({
-      rating: 5,
-      reviewer: reviewer.id,
-      review: 'good',
-      film: film.id
-    });
+  it('limits to 100 reviews', async() => {
+    const reviewer = await getReviewer();
+    const film = await getFilm();
 
-    Review.create(reviewArray);
-
+    await Review.create([...Array(101)].map(() => ({
+      rating: 4,
+      reviewer: reviewer._id,
+      review: chance.string({ length: 140 }),
+      film: film._id
+    })));
     return request(app)
       .get('/api/v1/reviews')
-      .then(reviews => {
-        expect(reviews.body).toHaveLength(100);
+      .then(res => {
+        expect(res.body).toHaveLength(100);
       });
   });
 });
